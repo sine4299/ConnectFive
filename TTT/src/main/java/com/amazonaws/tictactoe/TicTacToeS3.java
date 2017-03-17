@@ -181,41 +181,30 @@ public class TicTacToeS3 extends JFrame implements Runnable {
    		gameInfo = new Board();
 
  	    try {
- 	    	//System.out.println("Attempting to read the item...");
- 	    	/*
- 	        Item outcome = playerInfo.getItem(spec);
- 	        boolean conn = outcome.getBOOL("IsConnected");
- 	        */
- 	    	boolean conn = playerInfo.IsConnected;
  	        //UpdateItemSpec updateItemSpec;
  	        //UpdateItemOutcome itemOutcome;
  	        //Sets the player mark X for player 1  and O for player 2
- 	        if(!conn){
+ 	        if(!checkExists("playerinfo.mnetz", "playeroneconnected")){
+ 	        	this.playerId = 1;
  	        	myMark =  X_MARK;
  	        	//The the player is the first to connect then they get first turn
  	        	waitingForOpponent = true;
  	        	//Updates the DB to say that is player is connected as player 1
- 	        	playerId = 1;
- 	        	/*
- 	        	updateItemSpec = new UpdateItemSpec()
- 	        	.withPrimaryKey("PlayerId", playerId)
- 	        	.addAttributeUpdate(new AttributeUpdate("IsConnected").put(true));
- 	        	itemOutcome = playerInfo.updateItem(updateItemSpec);
- 	        	 */
  	        	playerInfo.PlayerId = 1;
+ 	        	File dummyConnected = new File("playeroneconnected.txt");
+ 	        	//File savedResults = SerializeObject(playerInfo, "playerinfo.txt");
+ 	        	putObjectInS3("playerinfo.mnetz", "playeroneconnected", dummyConnected);
+ 	        	//putObjectInS3("playerinfo.mnetz", )
  	        	displayMessage("Player X connected\n");
  	        	displayMessage("Waiting for other player to connect\n");
  	        }
  	        else{
  	        	myMark = O_MARK;
  	        	//Updates the DB to say that is player is connected as player 2
- 	        	playerId = 2;
- 	        	/*
- 	        	updateItemSpec = new UpdateItemSpec()
- 	            .withPrimaryKey("PlayerId", playerId)
- 	            .addAttributeUpdate(new AttributeUpdate("IsConnected").put(true));
- 	        	itemOutcome = playerInfo.updateItem(updateItemSpec);
- 	        	*/
+ 	        	playerInfo.PlayerId = 2;
+ 	        	File dummyConnected = new File("playertwoconnected.txt");
+ 	        	//File savedResults = SerializeObject(playerInfo, "playerinfo.txt");
+ 	        	putObjectInS3("playerinfo.mnetz", "playertwoconnected", dummyConnected);
  	        	myTurn = false;
  	        }
 
@@ -224,7 +213,6 @@ public class TicTacToeS3 extends JFrame implements Runnable {
  	           System.err.println(e.getMessage());
  	       	}
    	}
-   	// control thread that allows continuous update of displayArea
    	
    	public void putObjectInS3(String bucketName, String keyName, File uploadFile){
     	try{
@@ -257,10 +245,6 @@ public class TicTacToeS3 extends JFrame implements Runnable {
    		try{
    			System.out.println("Deleting an object\n");
         	myS3.deleteObject(bucketName, key);
-
-        	//Delete a bucket - A bucket must be completely empty before it can be deleted
-        	System.out.println("Deleting bucket " + bucketName + "\n");
-        	myS3.deleteBucket(bucketName);
    		} catch (AmazonServiceException ase) {
         System.out.println("Caught an AmazonServiceException, which means your request made it "
                 + "to Amazon S3, but was rejected with an error response for some reason.");
@@ -336,6 +320,34 @@ public class TicTacToeS3 extends JFrame implements Runnable {
     	}
     	catch(IOException exc) {System.out.println("Encountered IOException in downloadObj");}
     	return fetchFile;
+    }
+    
+    public boolean checkExists(String bucketName, String key){    	
+    	boolean results = myS3.doesObjectExist(bucketName, key);
+    	if(results){
+    		deleteObjectS3(bucketName, key);
+    	}
+    	return results;
+    }
+    
+    public boolean tryDownload(String bucketName, String key, File fileHandle){
+    	S3Object fetchFile = myS3.getObject(new GetObjectRequest(bucketName, key));
+    	
+    	final BufferedInputStream i = new BufferedInputStream(fetchFile.getObjectContent());
+    	InputStream objectData = fetchFile.getObjectContent();
+    	try {
+    		fileHandle = new File(getPath().toString() + key);
+    		Path target = fileHandle.toPath();
+    		//Get newest version of file
+    		Files.deleteIfExists(target);
+    		Files.copy(objectData, target);
+    		objectData.close();
+    	}
+    	catch(IOException exc) {System.out.println("Encountered IOException in downloadObj");
+    		return false;
+    	}
+    	deleteObjectS3(bucketName, key);
+    	return true;
     }
     
     public Path getPath(){
