@@ -229,11 +229,60 @@ public class TicTacToeClient extends JFrame implements Runnable
    }
    
    private boolean isGameOver() {
-	  
 	   return false;
    }
-
-   private boolean checkBoard(int checkDirection){
+   public boolean checkBoard(){
+		int row = 0;
+		int col = 0;
+		//Checks for vertical win
+		for(row = 0; row < 12; row++){
+			for(col = 0; col < 16; col++){
+				if(!board[row][col].getMark().equals(" ") &&
+				   board[row][col].getMark().equals(board[row + 1][col].getMark()) && 
+				   board[row][col].getMark().equals(board[row + 2][col].getMark()) && 
+				   board[row][col].getMark().equals(board[row + 3][col].getMark()) && 
+				   board[row][col].getMark().equals(board[row + 4][col].getMark())){
+				 		return true;	  	
+				}
+			}
+		}
+		//Checks for horizontal win
+		for(col = 0; col < 12; col++){
+			for(row = 0; row < 16; row++){
+				if(!board[row][col].getMark().equals(" ") &&
+				   board[row][col].getMark().equals(board[row][col + 1].getMark()) && 
+				   board[row][col].getMark().equals(board[row][col + 2].getMark()) && 
+				   board[row][col].getMark().equals(board[row][col + 3].getMark()) && 
+				   board[row][col].getMark().equals(board[row][col + 4].getMark())){
+				 		return true;	  	
+				}
+			}
+		}
+		for(row = 0; row < 5; row++){
+			for(col = 0; col < 13; col++){
+				if(!board[row][col].getMark().equals(" ") &&
+				   board[row][col].getMark().equals(board[row + 1][col + 1].getMark()) && 
+				   board[row][col].getMark().equals(board[row + 2][col + 2].getMark()) && 
+				   board[row][col].getMark().equals(board[row + 3][col + 3].getMark()) && 
+				   board[row][col].getMark().equals(board[row + 4][col + 4].getMark())){
+				 		return true;	  	
+				}
+			}
+		}
+		for(row = 6; row < 15; row++){
+			for(col = 0; col < 13; col++){
+				if(!board[row][col].getMark().equals(" ") &&
+				   board[row][col].getMark().equals(board[row - 1][col + 1].getMark()) && 
+				   board[row][col].getMark().equals(board[row - 2][col + 2].getMark()) && 
+				   board[row][col].getMark().equals(board[row - 3][col + 3].getMark()) && 
+				   board[row][col].getMark().equals(board[row - 4][col + 4].getMark())){
+				 		return true;	  	
+				}
+			}
+		}
+		return false;
+	}
+   /*private boolean checkBoard(int checkDirection){
 	   int n = currentSquare.getSquareLocation();
 	   //System.out.println(n);
 	   int location = n + checkDirection;
@@ -284,7 +333,7 @@ public class TicTacToeClient extends JFrame implements Runnable
 		   }
 	   }
 	   return false;
-   }
+   }*/
    
    private void processMessage( String message )
    {
@@ -382,7 +431,9 @@ public class TicTacToeClient extends JFrame implements Runnable
 		       itemOutcome = playerInfo.updateItem(updateItemSpec);
 		       String message = "Opponent moved";
 		       //Checks to see if there is a winner and sets the field in the database
-		       if(checkBoard(-15)  || checkBoard(-16) || checkBoard(-17) || checkBoard(-1)){
+		       //if(checkBoard(-15)  || checkBoard(-16) || checkBoard(-17) || checkBoard(-1)){
+		       if(checkBoard()){
+		    	   displayMessage("You Won");
 	        	   updateItemSpec = new UpdateItemSpec()
 	                      	.withPrimaryKey("PlayerId", otherPlayer)
 	                      	.addAttributeUpdate(new AttributeUpdate("OpponentWon").put(true));
