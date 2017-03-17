@@ -106,8 +106,10 @@ public class TicTacToeS3 extends JFrame implements Runnable {
 	private PlayerInfo playerInfo;
 	private Board gameInfo;
 	private int playerId;
-	private String player1key = "playerone";//Use this to store player one's serialized info
-	private String player2key = "playertwo";//Use this to store player two's serialized info
+	private String myID;//if player is player one set this to player1key or vice-versa if not
+	private String opponentID;//if player is player one set this to player2key or vice-versa if not
+	private String player1key = "playerone";//Use this to store player one's serialized info in bucket
+	private String player2key = "playertwo";//Use this to store player two's serialized info in bucket
 	
 
    	public static AmazonS3 makeS3(){
@@ -129,100 +131,100 @@ public class TicTacToeS3 extends JFrame implements Runnable {
    	
    	public TicTacToeS3( String host )
    	{ 
-   	   displayArea = new JTextArea( 4, 30 ); // set up JTextArea
-   	   displayArea.setEditable( false );
-   	   add( new JScrollPane( displayArea ), BorderLayout.SOUTH );
+   		displayArea = new JTextArea( 4, 30 ); // set up JTextArea
+   		displayArea.setEditable( false );
+   		add( new JScrollPane( displayArea ), BorderLayout.SOUTH );
 
-   	   boardPanel = new JPanel(); // set up panel for squares in board
-   	   boardPanel.setLayout( new GridLayout( bsize, bsize, 0, 0 ) ); //was 3
+   		boardPanel = new JPanel(); // set up panel for squares in board
+   		boardPanel.setLayout( new GridLayout( bsize, bsize, 0, 0 ) ); //was 3
 
-   	   board = new Square[ bsize ][ bsize ]; // create board
+   		board = new Square[ bsize ][ bsize ]; // create board
 
-   	   // loop over the rows in the board
-   	   for ( int row = 0; row < board.length; row++ ) 
-   	   {
-   	      // loop over the columns in the board
-   	      for ( int column = 0; column < board[ row ].length; column++ ) 
-   	      {
-   	         // create square. initially the symbol on each square is a white space.
-   	         board[ row ][ column ] = new Square( " ", row * bsize + column );
-   	         boardPanel.add( board[ row ][ column ] ); // add square       
-   	      } // end inner for
-   	   } // end outer for
+   		// loop over the rows in the board
+   		for ( int row = 0; row < board.length; row++ ) 
+   		{
+   			// loop over the columns in the board
+   			for ( int column = 0; column < board[ row ].length; column++ ) 
+   			{
+   				// create square. initially the symbol on each square is a white space.
+   				board[ row ][ column ] = new Square( " ", row * bsize + column );
+   				boardPanel.add( board[ row ][ column ] ); // add square       
+   			} // end inner for
+   		} // end outer for
 
-   	   idField = new JTextField(); // set up textfield
-   	   idField.setEditable( false );
-   	   add( idField, BorderLayout.NORTH );
+   		idField = new JTextField(); // set up textfield
+   		idField.setEditable( false );
+   		add( idField, BorderLayout.NORTH );
    	   
-   	   panel2 = new JPanel(); // set up panel to contain boardPanel
-   	   panel2.add( boardPanel, BorderLayout.CENTER ); // add board panel
-   	   add( panel2, BorderLayout.CENTER ); // add container panel
+   		panel2 = new JPanel(); // set up panel to contain boardPanel
+   		panel2.add( boardPanel, BorderLayout.CENTER ); // add board panel
+   		add( panel2, BorderLayout.CENTER ); // add container panel
 
-   	   setSize( 600, 600 ); // set size of window
-   	   setVisible( true ); // show window
+   		setSize( 600, 600 ); // set size of window
+   		setVisible( true ); // show window
 
-   	   startClient();
+   		startClient();
    	} // end TicTacToeClient constructor
    	
 
- // start the client thread
- public void startClient()
- {  
- 	   setPlayerInfo();
-    // create and start worker thread for this client
-    ExecutorService worker = Executors.newFixedThreadPool( 1 );
-    worker.execute( this ); // execute client
- } // end method startClient
+   	// start the client thread
+   	public void startClient()
+   	{  
+   		setPlayerInfo();
+   		// create and start worker thread for this client
+   		ExecutorService worker = Executors.newFixedThreadPool( 1 );
+   		worker.execute( this ); // execute client
+   	} // end method startClient
 
- public void setPlayerInfo(){
- 	       playerInfo = new PlayerInfo(1, false, false, "empty", false);
- 	       gameInfo = new Board();
+   	public void setPlayerInfo(){
+   		playerInfo = new PlayerInfo(1, false, false, "empty", false);
+   		gameInfo = new Board();
 
- 	       try {
- 	           //System.out.println("Attempting to read the item...");
- 	    	   /*
- 	           Item outcome = playerInfo.getItem(spec);
- 	           boolean conn = outcome.getBOOL("IsConnected");
- 	           */
- 	    	   boolean conn = playerInfo.IsConnected;
- 	           //UpdateItemSpec updateItemSpec;
- 	           //UpdateItemOutcome itemOutcome;
- 	           //Sets the player mark X for player 1  and O for player 2
- 	           if(!conn){
- 	        	   myMark =  X_MARK;
- 	        	   //The the player is the first to connect then they get first turn
- 	        	   waitingForOpponent = true;
- 	        	   //Updates the DB to say that is player is connected as player 1
- 	        	   playerId = 1;
- 	        	   /*
- 	        	   updateItemSpec = new UpdateItemSpec()
- 	        	                    	.withPrimaryKey("PlayerId", playerId)
- 	        	                    	.addAttributeUpdate(new AttributeUpdate("IsConnected").put(true));
- 	        	   itemOutcome = playerInfo.updateItem(updateItemSpec);
- 	        	   */
- 	        	   playerInfo.PlayerId = 1;
- 	        	   displayMessage("Player X connected\n");
- 	        	   displayMessage("Waiting for other player to connect\n");
- 	           }
- 	           else{
- 	        	   myMark = O_MARK;
- 	        	   //Updates the DB to say that is player is connected as player 2
- 	        	   playerId = 2;
- 	        	   /*
- 	        	   updateItemSpec = new UpdateItemSpec()
- 	                   	.withPrimaryKey("PlayerId", playerId)
- 	                   	.addAttributeUpdate(new AttributeUpdate("IsConnected").put(true));
- 	        	   itemOutcome = playerInfo.updateItem(updateItemSpec);
- 	        	   */
- 	        	   myTurn = false;
- 	           }
+ 	    try {
+ 	    	//System.out.println("Attempting to read the item...");
+ 	    	/*
+ 	        Item outcome = playerInfo.getItem(spec);
+ 	        boolean conn = outcome.getBOOL("IsConnected");
+ 	        */
+ 	    	boolean conn = playerInfo.IsConnected;
+ 	        //UpdateItemSpec updateItemSpec;
+ 	        //UpdateItemOutcome itemOutcome;
+ 	        //Sets the player mark X for player 1  and O for player 2
+ 	        if(!conn){
+ 	        	myMark =  X_MARK;
+ 	        	//The the player is the first to connect then they get first turn
+ 	        	waitingForOpponent = true;
+ 	        	//Updates the DB to say that is player is connected as player 1
+ 	        	playerId = 1;
+ 	        	/*
+ 	        	updateItemSpec = new UpdateItemSpec()
+ 	        	.withPrimaryKey("PlayerId", playerId)
+ 	        	.addAttributeUpdate(new AttributeUpdate("IsConnected").put(true));
+ 	        	itemOutcome = playerInfo.updateItem(updateItemSpec);
+ 	        	 */
+ 	        	playerInfo.PlayerId = 1;
+ 	        	displayMessage("Player X connected\n");
+ 	        	displayMessage("Waiting for other player to connect\n");
+ 	        }
+ 	        else{
+ 	        	myMark = O_MARK;
+ 	        	//Updates the DB to say that is player is connected as player 2
+ 	        	playerId = 2;
+ 	        	/*
+ 	        	updateItemSpec = new UpdateItemSpec()
+ 	            .withPrimaryKey("PlayerId", playerId)
+ 	            .addAttributeUpdate(new AttributeUpdate("IsConnected").put(true));
+ 	        	itemOutcome = playerInfo.updateItem(updateItemSpec);
+ 	        	*/
+ 	        	myTurn = false;
+ 	        }
 
- 	       } catch (Exception e) {
- 	           System.err.println("Unable to read item: " + " in setPlayerInfo");
+ 	       }catch (Exception e) {
+ 	    	   System.err.println("Unable to read item: " + " in setPlayerInfo");
  	           System.err.println(e.getMessage());
- 	       }
- 	   }
- // control thread that allows continuous update of displayArea
+ 	       	}
+   	}
+   	// control thread that allows continuous update of displayArea
    	
    	public void putObjectInS3(String bucketName, String keyName, File uploadFile){
     	try{
@@ -250,21 +252,59 @@ public class TicTacToeS3 extends JFrame implements Runnable {
             System.out.println("Error Message: " + ace.getMessage());
         }
     }
-   	public void readFromS3(String bucketName, String key) throws IOException {
-   	    S3Object s3object = myS3.getObject(new GetObjectRequest(
-   	            bucketName, key));
-   	    System.out.println(s3object.getObjectMetadata().getContentType());
-   	    System.out.println(s3object.getObjectMetadata().getContentLength());
+   	
+   	public void deleteObjectS3(String bucketName, String key){
+   		try{
+   			System.out.println("Deleting an object\n");
+        	myS3.deleteObject(bucketName, key);
 
-   	    BufferedReader reader = new BufferedReader(new InputStreamReader(s3object.getObjectContent()));
-   	    String line;
-   	    while((line = reader.readLine()) != null) {
-   	      // can copy the content locally as well
-   	      // using a buffered writer
-   	      System.out.println(line);
-   	    }
+        	//Delete a bucket - A bucket must be completely empty before it can be deleted
+        	System.out.println("Deleting bucket " + bucketName + "\n");
+        	myS3.deleteBucket(bucketName);
+   		} catch (AmazonServiceException ase) {
+        System.out.println("Caught an AmazonServiceException, which means your request made it "
+                + "to Amazon S3, but was rejected with an error response for some reason.");
+        System.out.println("Error Message:    " + ase.getMessage());
+        System.out.println("HTTP Status Code: " + ase.getStatusCode());
+        System.out.println("AWS Error Code:   " + ase.getErrorCode());
+        System.out.println("Error Type:       " + ase.getErrorType());
+        System.out.println("Request ID:       " + ase.getRequestId());
+    } catch (AmazonClientException ace) {
+        System.out.println("Caught an AmazonClientException, which means the client encountered "
+                + "a serious internal problem while trying to communicate with S3, "
+                + "such as not being able to access the network.");
+        System.out.println("Error Message: " + ace.getMessage());
+    }
    	}
-   	 
+   	
+   	public void deleteBucketS3(String bucketName){
+   		try{
+        	//Delete a bucket - A bucket must be completely empty before it can be deleted
+   			ObjectListing object_listing = myS3.listObjects(bucketName);
+        	List<S3ObjectSummary> summaries = object_listing.getObjectSummaries();
+        	for (S3ObjectSummary summary : summaries) {
+
+                String summaryKey = summary.getKey();
+                deleteObjectS3(bucketName, summaryKey);
+            }   	        
+        	System.out.println("Deleting bucket " + bucketName + "\n");
+        	myS3.deleteBucket(bucketName);
+   		} catch (AmazonServiceException ase) {
+	        System.out.println("Caught an AmazonServiceException, which means your request made it "
+	                + "to Amazon S3, but was rejected with an error response for some reason.");
+	        System.out.println("Error Message:    " + ase.getMessage());
+	        System.out.println("HTTP Status Code: " + ase.getStatusCode());
+	        System.out.println("AWS Error Code:   " + ase.getErrorCode());
+	        System.out.println("Error Type:       " + ase.getErrorType());
+	        System.out.println("Request ID:       " + ase.getRequestId());
+	    } catch (AmazonClientException ace) {
+	        System.out.println("Caught an AmazonClientException, which means the client encountered "
+	                + "a serious internal problem while trying to communicate with S3, "
+	                + "such as not being able to access the network.");
+	        System.out.println("Error Message: " + ace.getMessage());
+	    }
+   	}
+   	
    	public static String ReadS3Content(String bucket, String key) {
    		StringBuilder sb = new StringBuilder();   	  
    		S3Object s3object = myS3.getObject(bucket, key);
@@ -325,6 +365,7 @@ public class TicTacToeS3 extends JFrame implements Runnable {
 		}
     	return resultsFile;
 	}
+    
     public static PlayerInfo ReadSerializedPlayerInfo(String fileName){
     	PlayerInfo pi = null;
     	try{
@@ -347,6 +388,29 @@ public class TicTacToeS3 extends JFrame implements Runnable {
 			e.printStackTrace();
 		}
 		return pi;
+    }
+    
+    public static Board ReadSerializedBoard(String fileName){
+    	Board b = null;
+    	try{
+	    	FileInputStream fi = new FileInputStream(new File(fileName));
+			ObjectInputStream oi = new ObjectInputStream(fi);
+	
+			// Read objects
+			 b = (Board) oi.readObject();
+	
+			oi.close();
+			fi.close();
+	
+		} catch (FileNotFoundException e) {
+			System.out.println("File not found");
+		} catch (IOException e) {
+			System.out.println("Error initializing stream");
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return b;
     }
     
     public static class PlayerInfo implements Serializable
@@ -394,7 +458,7 @@ public class TicTacToeS3 extends JFrame implements Runnable {
    		}
    	}
     
- // private inner class for the squares on the board
+    //private inner class for the squares on the board
     private class Square extends JPanel 
     {
        private String mark; // mark to be drawn in this square
@@ -464,11 +528,12 @@ public class TicTacToeS3 extends JFrame implements Runnable {
     } // end inner-class Square
 
     public void checkForTurn(){
-	   GetItemSpec spec = new GetItemSpec()
-            .withPrimaryKey("PlayerId", playerId); 
-
-	   try {
-		   	/*
+    	/*
+    	GetItemSpec spec = new GetItemSpec()
+        .withPrimaryKey("PlayerId", playerId); 
+		*/
+    	try {
+    		/*
 	        Item outcome = playerInfo.getItem(spec);
 	        myTurn = outcome.getBOOL("IsTurn");
 	        */
@@ -628,8 +693,8 @@ public class TicTacToeS3 extends JFrame implements Runnable {
        { 	  	
     	       try {
     	           //System.out.println("Attempting to read the item...");
-    	           UpdateItemSpec updateItemSpec;
-    	           UpdateItemOutcome itemOutcome;
+    	           //UpdateItemSpec updateItemSpec;
+    	           //UpdateItemOutcome itemOutcome;
     	           
     	           //Update the last move in the table
     	           /*
