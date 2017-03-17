@@ -110,7 +110,7 @@ public class TicTacToeS3 extends JFrame implements Runnable {
 	private String opponentID;//if player is player one set this to player2key or vice-versa if not
 	private String player1key = "playerone";//Use this to store player one's serialized info in bucket
 	private String player2key = "playertwo";//Use this to store player two's serialized info in bucket
-	
+	public static TicTacToeS3 appHandle = null;
 
    	public static AmazonS3 makeS3(){
     	AWSCredentials credentials = null;
@@ -184,7 +184,7 @@ public class TicTacToeS3 extends JFrame implements Runnable {
  	        //UpdateItemSpec updateItemSpec;
  	        //UpdateItemOutcome itemOutcome;
  	        //Sets the player mark X for player 1  and O for player 2
- 	        if(!checkExists("playerinfo.mnetz", "playeroneconnected")){
+ 	        if(!checkExists("playerinfo.mnetz", "playeroneconnected", false)){
  	        	this.playerId = 1;
  	        	myMark =  X_MARK;
  	        	//The the player is the first to connect then they get first turn
@@ -243,7 +243,7 @@ public class TicTacToeS3 extends JFrame implements Runnable {
    	
    	public void deleteObjectS3(String bucketName, String key){
    		try{
-   			System.out.println("Deleting an object\n");
+   			System.out.println("Deleting an object: " + key);
         	myS3.deleteObject(bucketName, key);
    		} catch (AmazonServiceException ase) {
         System.out.println("Caught an AmazonServiceException, which means your request made it "
@@ -322,9 +322,11 @@ public class TicTacToeS3 extends JFrame implements Runnable {
     	return fetchFile;
     }
     
-    public boolean checkExists(String bucketName, String key){    	
+    /* The below method is passed the boolean shouldDelete, which indicates if the found file
+    should be removed */
+    public boolean checkExists(String bucketName, String key, boolean shouldDelete){    	
     	boolean results = myS3.doesObjectExist(bucketName, key);
-    	if(results){
+    	if(results && shouldDelete){
     		deleteObjectS3(bucketName, key);
     	}
     	return results;
@@ -772,21 +774,13 @@ public class TicTacToeS3 extends JFrame implements Runnable {
     } // end method setCurrentSquare
     
     public static void main(String[] args) throws IOException {
-
-        /*
-         * The ProfileCredentialsProvider will return your [default]
-         * credential profile by reading from the credentials file located at
-         * (C:\\Users\\micah\\.aws\\credentials).
-         */
     	
     	TicTacToeS3 application; // declare client application
 
         // if no command line args
-        if ( args.length == 0 )
-           application = new TicTacToeS3(""); // 
-        else
-           application = new TicTacToeS3(args[0]); // use args
-
+        if ( args.length == 0 ){ application = new TicTacToeS3("");}
+        else{ application = new TicTacToeS3(args[0]); }// use args
+        appHandle = application;
         //application.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
         application.addWindowListener(new WindowListener() {            
        	  	@Override
@@ -796,6 +790,7 @@ public class TicTacToeS3 extends JFrame implements Runnable {
        	    		PlayerInfo p1 = new PlayerInfo(1, false, false, "empty", false);
        	    		//Probably serialize these PlayerInfos into file form then upload them to S3 bucket
        	    		PlayerInfo p2 = new PlayerInfo(2, false, false, "empty", false);
+       	    		CleanUp();
        		       } catch (Exception ex) {
        		           System.err.println("Unable to read item: " + " window Listener");
        		           System.err.println(ex.getMessage());
@@ -834,8 +829,18 @@ public class TicTacToeS3 extends JFrame implements Runnable {
     	catch(Exception e){System.out.println(e.getMessage());}
     	System.out.println("Micah's Test End");        
         */
+        //The below method needs to be called at window close
+        //CleanUp(application);
 }
- // control thread that allows continuous update of displayArea
+ private static void CleanUp() {
+		// TODO Auto-generated method stub
+	 appHandle.deleteObjectS3("playerinfo.mnetz", "playeroneconnected");
+	 appHandle.deleteObjectS3("playerinfo.mnetz", "playertwoconnected");
+	 
+		
+	}
+
+// control thread that allows continuous update of displayArea
     public void run()
     {
 
