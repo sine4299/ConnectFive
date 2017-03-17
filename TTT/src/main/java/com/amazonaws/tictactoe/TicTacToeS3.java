@@ -830,58 +830,7 @@ public class TicTacToeS3 extends JFrame implements Runnable {
                     "Please make sure that your credentials file is at the correct " +
                     "location (C:\\Users\\micah\\.aws\\credentials), and is in valid format.",
                     e);
-        }
-
-        /*
-        try {
-            System.out.println("Creating bucket " + bucketName + "\n");
-            s3.createBucket(bucketName);
-            
-            System.out.println("Listing buckets");
-            for (Bucket bucket : s3.listBuckets()) {
-                System.out.println(" - " + bucket.getName());
-            }
-            System.out.println();
-
-            System.out.println("Uploading a new object to S3 from a file\n");
-            s3.putObject(new PutObjectRequest(bucketName, key, createSampleFile()));
-
-            System.out.println("Downloading an object");
-            S3Object object = s3.getObject(new GetObjectRequest(bucketName, key));
-            System.out.println("Content-Type: "  + object.getObjectMetadata().getContentType());
-            displayTextInputStream(object.getObjectContent());
-
-            System.out.println("Listing objects");
-            ObjectListing objectListing = s3.listObjects(new ListObjectsRequest()
-                    .withBucketName(bucketName)
-                    .withPrefix("My"));
-            for (S3ObjectSummary objectSummary : objectListing.getObjectSummaries()) {
-                System.out.println(" - " + objectSummary.getKey() + "  " +
-                                   "(size = " + objectSummary.getSize() + ")");
-            }
-            System.out.println();
-
-            System.out.println("Deleting an object\n");
-            s3.deleteObject(bucketName, key);
-
-            // Delete a bucket - A bucket must be completely empty before it can be deleted
-            System.out.println("Deleting bucket " + bucketName + "\n");
-            s3.deleteBucket(bucketName);
-        } catch (AmazonServiceException ase) {
-            System.out.println("Caught an AmazonServiceException, which means your request made it "
-                    + "to Amazon S3, but was rejected with an error response for some reason.");
-            System.out.println("Error Message:    " + ase.getMessage());
-            System.out.println("HTTP Status Code: " + ase.getStatusCode());
-            System.out.println("AWS Error Code:   " + ase.getErrorCode());
-            System.out.println("Error Type:       " + ase.getErrorType());
-            System.out.println("Request ID:       " + ase.getRequestId());
-        } catch (AmazonClientException ace) {
-            System.out.println("Caught an AmazonClientException, which means the client encountered "
-                    + "a serious internal problem while trying to communicate with S3, "
-                    + "such as not being able to access the network.");
-            System.out.println("Error Message: " + ace.getMessage());
-        }
-        */  
+        } 
 }
  // control thread that allows continuous update of displayArea
     public void run()
@@ -913,5 +862,4 @@ public class TicTacToeS3 extends JFrame implements Runnable {
            
        }// end while
     } // end method run
-
 }
