@@ -106,11 +106,12 @@ public class TicTacToeS3 extends JFrame implements Runnable {
 	private PlayerInfo playerInfo;
 	private Board gameInfo;
 	private int playerId;
-	private String myID;//if player is player one set this to player1key or vice-versa if not
+	private static String myID;//if player is player one set this to player1key or vice-versa if not
 	private String opponentID;//if player is player one set this to player2key or vice-versa if not
 	private String player1key = "playerone";//Use this to store player one's serialized info in bucket
 	private String player2key = "playertwo";//Use this to store player two's serialized info in bucket
 	public static TicTacToeS3 appHandle = null;
+	private String myBoard;
 
    	public static AmazonS3 makeS3(){
     	AWSCredentials credentials = null;
@@ -185,16 +186,17 @@ public class TicTacToeS3 extends JFrame implements Runnable {
  	        //UpdateItemOutcome itemOutcome;
  	        //Sets the player mark X for player 1  and O for player 2
  	        if(!checkExists("playerinfo.mnetz", "playeroneconnected", false)){
- 	        	this.playerId = 1;
  	        	myMark =  X_MARK;
  	        	//The the player is the first to connect then they get first turn
  	        	waitingForOpponent = true;
  	        	//Updates the DB to say that is player is connected as player 1
  	        	playerInfo.PlayerId = 1;
+ 	        	myID = player1key;
+ 	        	opponentID = player2key;
+ 	        	myBoard = player1key + "board";
  	        	File dummyConnected = new File("playeroneconnected.txt");
  	        	//File savedResults = SerializeObject(playerInfo, "playerinfo.txt");
  	        	putObjectInS3("playerinfo.mnetz", "playeroneconnected", dummyConnected);
- 	        	//putObjectInS3("playerinfo.mnetz", )
  	        	displayMessage("Player X connected\n");
  	        	displayMessage("Waiting for other player to connect\n");
  	        }
@@ -202,6 +204,9 @@ public class TicTacToeS3 extends JFrame implements Runnable {
  	        	myMark = O_MARK;
  	        	//Updates the DB to say that is player is connected as player 2
  	        	playerInfo.PlayerId = 2;
+ 	        	myID = player2key;
+ 	        	opponentID = player1key;
+ 	        	myBoard = player2key + "board";
  	        	File dummyConnected = new File("playertwoconnected.txt");
  	        	//File savedResults = SerializeObject(playerInfo, "playerinfo.txt");
  	        	putObjectInS3("playerinfo.mnetz", "playertwoconnected", dummyConnected);
@@ -267,26 +272,18 @@ public class TicTacToeS3 extends JFrame implements Runnable {
    			ObjectListing object_listing = myS3.listObjects(bucketName);
         	List<S3ObjectSummary> summaries = object_listing.getObjectSummaries();
         	for (S3ObjectSummary summary : summaries) {
-
                 String summaryKey = summary.getKey();
                 deleteObjectS3(bucketName, summaryKey);
             }   	        
         	System.out.println("Deleting bucket " + bucketName + "\n");
         	myS3.deleteBucket(bucketName);
    		} catch (AmazonServiceException ase) {
-	        System.out.println("Caught an AmazonServiceException, which means your request made it "
-	                + "to Amazon S3, but was rejected with an error response for some reason.");
 	        System.out.println("Error Message:    " + ase.getMessage());
 	        System.out.println("HTTP Status Code: " + ase.getStatusCode());
 	        System.out.println("AWS Error Code:   " + ase.getErrorCode());
 	        System.out.println("Error Type:       " + ase.getErrorType());
 	        System.out.println("Request ID:       " + ase.getRequestId());
-	    } catch (AmazonClientException ace) {
-	        System.out.println("Caught an AmazonClientException, which means the client encountered "
-	                + "a serious internal problem while trying to communicate with S3, "
-	                + "such as not being able to access the network.");
-	        System.out.println("Error Message: " + ace.getMessage());
-	    }
+	    } catch (AmazonClientException ace) { System.out.println("Error Message: " + ace.getMessage()); }
    	}
    	
    	public static String ReadS3Content(String bucket, String key) {
@@ -365,18 +362,13 @@ public class TicTacToeS3 extends JFrame implements Runnable {
     		resultsFile = new File(fileName);
 			FileOutputStream f = new FileOutputStream(resultsFile);
 			ObjectOutputStream o = new ObjectOutputStream(f);
-
 			// Write objects to file
 			o.writeObject(obj);
-
 			o.close();
 			f.close();
-
-		} catch (FileNotFoundException e) {
-			System.out.println("File not found");
-		} catch (IOException e) {
-			System.out.println("Error initializing stream");
 		}
+    	catch (FileNotFoundException e) { System.out.println("File not found"); }
+    	catch (IOException e) {	System.out.println("Error initializing stream"); }
     	return resultsFile;
 	}
     
@@ -384,46 +376,32 @@ public class TicTacToeS3 extends JFrame implements Runnable {
     	PlayerInfo pi = null;
     	try{
 	    	FileInputStream fi = new FileInputStream(new File(fileName));
-			ObjectInputStream oi = new ObjectInputStream(fi);
-	
+			ObjectInputStream oi = new ObjectInputStream(fi);	
 			// Read objects
 			pi = (PlayerInfo) oi.readObject();	
-			System.out.println(pi.toString());
-	
+			System.out.println(pi.toString());	
 			oi.close();
 			fi.close();
-	
-		} catch (FileNotFoundException e) {
-			System.out.println("File not found");
-		} catch (IOException e) {
-			System.out.println("Error initializing stream");
-		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
+    	catch (FileNotFoundException e) { System.out.println("File not found"); }
+    	catch (IOException e) {	System.out.println("Error initializing stream"); }
+    	catch (ClassNotFoundException e) { e.printStackTrace();	}
 		return pi;
     }
     
     public static Board ReadSerializedBoard(String fileName){
     	Board b = null;
-    	try{
+    	try {
 	    	FileInputStream fi = new FileInputStream(new File(fileName));
-			ObjectInputStream oi = new ObjectInputStream(fi);
-	
+			ObjectInputStream oi = new ObjectInputStream(fi);	
 			// Read objects
-			 b = (Board) oi.readObject();
-	
+			 b = (Board) oi.readObject();	
 			oi.close();
-			fi.close();
-	
-		} catch (FileNotFoundException e) {
-			System.out.println("File not found");
-		} catch (IOException e) {
-			System.out.println("Error initializing stream");
-		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+			fi.close();	
+		} 
+    	catch (FileNotFoundException e) { System.out.println("File not found"); } 
+    	catch (IOException e) {	System.out.println("Error initializing stream"); } 
+    	catch (ClassNotFoundException e) { e.printStackTrace(); }
 		return b;
     }
     
@@ -488,12 +466,12 @@ public class TicTacToeS3 extends JFrame implements Runnable {
                 public void mouseReleased( MouseEvent e )
                 {
              	   if(getMark().equals(" ")){
-             	   if(myTurn){
-    	                  setCurrentSquare( Square.this ); // set current square
-    	                  TicTacToeS3.this.setMark( currentSquare, myMark );
-    	                  displayMessage("You clicked at location: " + getSquareLocation() + "\n");
-    	                  sendClickedSquare( getSquareLocation() );
-             	   }
+	             	   if(myTurn){
+	    	                  setCurrentSquare( Square.this ); // set current square
+	    	                  TicTacToeS3.this.setMark( currentSquare, myMark );
+	    	                  displayMessage("You clicked at location: " + getSquareLocation() + "\n");
+	    	                  sendClickedSquare( getSquareLocation() );
+	             	   }
              	   }
                    //if(isValidMove()) // you have write your own method isValidMove().
                          //sendClickedSquare( getSquareLocation() );   
@@ -502,19 +480,16 @@ public class TicTacToeS3 extends JFrame implements Runnable {
           ); // end call to addMouseListener
        } // end Square constructor
 
-       // return preferred size of Square
        public Dimension getPreferredSize() 
        { 
-          return new Dimension( 30, 30 ); // return preferred size
+          return new Dimension(30, 30);
        } // end method getPreferredSize
 
-       // return minimum size of Square
        public Dimension getMinimumSize() 
        {
           return getPreferredSize(); // return preferred size
        } // end method getMinimumSize
 
-       // set mark for Square
        public void setMark( String newMark ) 
        { 
           mark = newMark; // set mark of square
@@ -547,15 +522,24 @@ public class TicTacToeS3 extends JFrame implements Runnable {
         .withPrimaryKey("PlayerId", playerId); 
 		*/
     	try {
-    		/*
-	        Item outcome = playerInfo.getItem(spec);
-	        myTurn = outcome.getBOOL("IsTurn");
-	        */
+    		if(checkExists("playerinfo.mnetz", myID, false)){
+    			myTurn = true;
+    			//waitingForOpponent = false;
+    		}
+    		else{
+    			myTurn = false;
+    			//waitingForOpponent = true;
+    		}
 	        if(myTurn){
 	        	String message  = playerInfo.message;//outcome.getString("Message");
 	        	processMessage( message );
 	        }
-	        else if(waitingForOpponent){
+	        else if(waitingForOpponent){	        	
+	        	if(checkExists("playerinfo.mnetz", opponentID + "connected", false)){
+	        		displayMessage("Player 2 has connected\nYour turn\n");
+	        		myTurn = true;
+	        		waitingForOpponent = false;
+	        	}
 	        	/*
 	        	GetItemSpec spec1 = new GetItemSpec()
 	                    .withPrimaryKey("PlayerId", 2); 
@@ -643,8 +627,15 @@ public class TicTacToeS3 extends JFrame implements Runnable {
         	.withPrimaryKey("Row", "0"); 
 	   	Item outcome = gameInfo.getItem(spec);
 	   	*/
-	   	int position = gameInfo.LastMove;//outcome.getInt("LastMove");
+    	int position = -1;
     	
+    	if(checkExists("board.mnetz", myBoard, false)) {    	
+	    	S3Object obj = downloadObj("board.mnetz", myBoard);
+			Board b = ReadSerializedBoard(obj.getKey().toString());
+			System.out.println("Board retrieved: \n" + b.toString());		
+			//int position = gameInfo.LastMove;//outcome.getInt("LastMove");
+			position = b.LastMove;
+    	}
     	return position;
     }    
     private void processMessage( String message )
@@ -768,35 +759,30 @@ public class TicTacToeS3 extends JFrame implements Runnable {
     } // end method sendClickedSquare
 
     // set current Square
-    public void setCurrentSquare( Square square )
-    {
+    public void setCurrentSquare( Square square ) {
        currentSquare = square; // set current square to argument
     } // end method setCurrentSquare
     
-    public static void main(String[] args) throws IOException {
-    	
+    public static void main(String[] args) throws IOException {    	
     	TicTacToeS3 application; // declare client application
-
         // if no command line args
         if ( args.length == 0 ){ application = new TicTacToeS3("");}
         else{ application = new TicTacToeS3(args[0]); }// use args
         appHandle = application;
         //application.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
         application.addWindowListener(new WindowListener() {            
-       	  	@Override
-      	  	    public void windowOpened(WindowEvent e) {}	
+       	  	@Override public void windowOpened(WindowEvent e) {}	
        	    @Override public void windowClosing(WindowEvent e) {
        	    	try {
        	    		PlayerInfo p1 = new PlayerInfo(1, false, false, "empty", false);
        	    		//Probably serialize these PlayerInfos into file form then upload them to S3 bucket
        	    		PlayerInfo p2 = new PlayerInfo(2, false, false, "empty", false);
        	    		CleanUp();
-       		       } catch (Exception ex) {
-       		           System.err.println("Unable to read item: " + " window Listener");
-       		           System.err.println(ex.getMessage());
-       		       }
+       		    }
+       	    	catch (Exception ex) {
+   		           System.err.println("Unable to read item: window Listener\n" + ex.getMessage());
+       	    	}
        	    }
-
        	    @Override public void windowIconified(WindowEvent e) {}            
        	    @Override public void windowDeiconified(WindowEvent e) {}            
        	    @Override public void windowDeactivated(WindowEvent e) {}            
@@ -831,24 +817,16 @@ public class TicTacToeS3 extends JFrame implements Runnable {
         */
         //The below method needs to be called at window close
         //CleanUp(application);
-}
- private static void CleanUp() {
-		// TODO Auto-generated method stub
-	 appHandle.deleteObjectS3("playerinfo.mnetz", "playeroneconnected");
-	 appHandle.deleteObjectS3("playerinfo.mnetz", "playertwoconnected");
-	 
-		
+    }
+    private static void CleanUp() {
+    	appHandle.deleteObjectS3("playerinfo.mnetz", myID + "connected");		
 	}
 
 // control thread that allows continuous update of displayArea
-    public void run()
-    {
-
+    public void run() {
        SwingUtilities.invokeLater( 
-          new Runnable() 
-          {         
-             public void run()
-             {
+          new Runnable() {         
+             public void run() {
                 // display player's mark
                 idField.setText( "You are player \"" + myMark + "\"" );
              } // end method run
@@ -856,18 +834,15 @@ public class TicTacToeS3 extends JFrame implements Runnable {
        ); // end call to SwingUtilities.invokeLater
           
        //myTurn = ( myMark.equals( X_MARK ) ); // determine if client's turn
-       while ( ! isGameOver() )
-       {
+       while ( ! isGameOver() ) {
     		  System.out.print("");
-     	  while(!myTurn){
+     	  while(!myTurn) {
      		  try {
      			  Thread.sleep(1000);
      			  checkForTurn();
-     		  } catch (InterruptedException e) {
-     			  e.printStackTrace();
-     		  }
-     	  }    
-           
+     		  } 
+     		  catch (InterruptedException e) { e.printStackTrace(); }
+     	  }           
        }// end while
     } // end method run
 }
