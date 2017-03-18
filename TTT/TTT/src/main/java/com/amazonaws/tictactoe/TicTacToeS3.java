@@ -189,6 +189,7 @@ public class TicTacToeS3 extends JFrame implements Runnable {
  	        	myMark =  X_MARK;
  	        	//The the player is the first to connect then they get first turn
  	        	waitingForOpponent = true;
+ 	        	myTurn = true;
  	        	//Updates the DB to say that is player is connected as player 1
  	        	playerInfo.PlayerId = 1;
  	        	myID = player1key;
@@ -226,10 +227,6 @@ public class TicTacToeS3 extends JFrame implements Runnable {
             myS3.putObject(new PutObjectRequest(bucketName, keyName, file));
     	}
     	catch (AmazonServiceException ase) {
-            System.out.println("Caught an AmazonServiceException, which " +
-            		"means your request made it " +
-                    "to Amazon S3, but was rejected with an error response" +
-                    " for some reason.");
             System.out.println("Error Message:    " + ase.getMessage());
             System.out.println("HTTP Status Code: " + ase.getStatusCode());
             System.out.println("AWS Error Code:   " + ase.getErrorCode());
@@ -237,11 +234,6 @@ public class TicTacToeS3 extends JFrame implements Runnable {
             System.out.println("Request ID:       " + ase.getRequestId());
         }
     	catch (AmazonClientException ace) {
-            System.out.println("Caught an AmazonClientException, which " +
-            		"means the client encountered " +
-                    "an internal error while trying to " +
-                    "communicate with S3, " +
-                    "such as not being able to access the network.");
             System.out.println("Error Message: " + ace.getMessage());
         }
     }
@@ -251,17 +243,12 @@ public class TicTacToeS3 extends JFrame implements Runnable {
    			System.out.println("Deleting an object: " + key);
         	myS3.deleteObject(bucketName, key);
    		} catch (AmazonServiceException ase) {
-        System.out.println("Caught an AmazonServiceException, which means your request made it "
-                + "to Amazon S3, but was rejected with an error response for some reason.");
         System.out.println("Error Message:    " + ase.getMessage());
         System.out.println("HTTP Status Code: " + ase.getStatusCode());
         System.out.println("AWS Error Code:   " + ase.getErrorCode());
         System.out.println("Error Type:       " + ase.getErrorType());
         System.out.println("Request ID:       " + ase.getRequestId());
     } catch (AmazonClientException ace) {
-        System.out.println("Caught an AmazonClientException, which means the client encountered "
-                + "a serious internal problem while trying to communicate with S3, "
-                + "such as not being able to access the network.");
         System.out.println("Error Message: " + ace.getMessage());
     }
    	}
@@ -305,7 +292,6 @@ public class TicTacToeS3 extends JFrame implements Runnable {
     public S3Object downloadObj(String bucketName, String key){
     	S3Object fetchFile = myS3.getObject(new GetObjectRequest(bucketName, key));
     	
-    	final BufferedInputStream i = new BufferedInputStream(fetchFile.getObjectContent());
     	InputStream objectData = fetchFile.getObjectContent();
     	try {
     		File f = new File(getPath().toString() + key);
@@ -332,7 +318,6 @@ public class TicTacToeS3 extends JFrame implements Runnable {
     public boolean tryDownload(String bucketName, String key, File fileHandle){
     	S3Object fetchFile = myS3.getObject(new GetObjectRequest(bucketName, key));
     	
-    	final BufferedInputStream i = new BufferedInputStream(fetchFile.getObjectContent());
     	InputStream objectData = fetchFile.getObjectContent();
     	try {
     		fileHandle = new File(getPath().toString() + key);
@@ -556,7 +541,7 @@ public class TicTacToeS3 extends JFrame implements Runnable {
 	 	            waitingForOpponent = false;
 	        	}
 	        	*/
-	        }
+	        }//end of elseif
 	   }
 	   catch (Exception e) {
 		   System.err.println("Unable to read item:" + playerId + " in checkForTurn");
@@ -694,66 +679,70 @@ public class TicTacToeS3 extends JFrame implements Runnable {
     public void sendClickedSquare( int location )
     {
        // if it is my turn
-       if ( myTurn ) 
+    	//Might only need one or the other (or &&) as both may confuse things
+       if ( myTurn || checkExists("playerinfo.mnetz", myID, false) )
        { 	  	
-    	       try {
-    	           //System.out.println("Attempting to read the item...");
-    	           //UpdateItemSpec updateItemSpec;
-    	           //UpdateItemOutcome itemOutcome;
-    	           
-    	           //Update the last move in the table
-    	           /*
-    	           updateItemSpec = new UpdateItemSpec()
-    	                   	.withPrimaryKey("Row", "0")
-    	                   	.addAttributeUpdate(new AttributeUpdate("LastMove").put(location));
-    		       itemOutcome = gameInfo.updateItem(updateItemSpec);
-    		       */    
-    		       //Update the current player turns
-    		       /*
-    		       updateItemSpec = new UpdateItemSpec()
-                    	.withPrimaryKey("PlayerId", playerId)
-                    	.addAttributeUpdate(new AttributeUpdate("IsTurn").put(false));
-    	           itemOutcome = playerInfo.updateItem(updateItemSpec);
-    	           */
-    	           int otherPlayer;
-    	           if(playerId == 1){
-    	        	   otherPlayer = 2;
-    	           }
-    	           else{
-    	        	   otherPlayer = 1;
-    	           }
-    	           //Update the opponents turn
-    	           /*
-    	           updateItemSpec = new UpdateItemSpec()
-    	                   	.withPrimaryKey("PlayerId", otherPlayer)
-    	                   	.addAttributeUpdate(new AttributeUpdate("IsTurn").put(true));
-    		       itemOutcome = playerInfo.updateItem(updateItemSpec);
-    		       */
-    		       String message = "Opponent moved";
-    		       //Checks to see if there is a winner and sets the field in the database
-    		       //if(checkBoard(-15)  || checkBoard(-16) || checkBoard(-17) || checkBoard(-1)){
-    		       if(checkBoard()){
-    		    	   displayMessage("You Won");
-    		    	   /*
-    	        	   updateItemSpec = new UpdateItemSpec()
-    	                      	.withPrimaryKey("PlayerId", otherPlayer)
-    	                      	.addAttributeUpdate(new AttributeUpdate("OpponentWon").put(true));
-    	   	           itemOutcome = playerInfo.updateItem(updateItemSpec);
-    	   	           */
-    	   	           message = "Opponent Won";
-    		       }
-    		       /*
-    		       updateItemSpec = new UpdateItemSpec()
-    	                   	.withPrimaryKey("PlayerId", otherPlayer)
-    	                   	.addAttributeUpdate(new AttributeUpdate("Message").put(message));
-    		       itemOutcome = playerInfo.updateItem(updateItemSpec);
-    		       */
-    	       } catch (Exception e) {
-    	           System.err.println("Unable to read item: " + playerId + "in sendClickedSquare");
-    	           System.err.println(e.getMessage());
-    	       }
-     	  
-          myTurn = false; // not my turn anymore
+	       try {
+	           //System.out.println("Attempting to read the item...");
+	           //UpdateItemSpec updateItemSpec;
+	           //UpdateItemOutcome itemOutcome;
+	           
+	           //Update the last move in the table
+	    	   gameInfo.LastMove = location;
+	           /*
+	           updateItemSpec = new UpdateItemSpec()
+	                   	.withPrimaryKey("Row", "0")
+	                   	.addAttributeUpdate(new AttributeUpdate("LastMove").put(location));
+		       itemOutcome = gameInfo.updateItem(updateItemSpec);
+		       */    
+		       //Update the current player turns
+		       /*
+		       updateItemSpec = new UpdateItemSpec()
+                	.withPrimaryKey("PlayerId", playerId)
+                	.addAttributeUpdate(new AttributeUpdate("IsTurn").put(false));
+	           itemOutcome = playerInfo.updateItem(updateItemSpec);
+	           */	    	   
+	           int otherPlayer;
+	           if(playerId == 1){ otherPlayer = 2; }
+	           else { otherPlayer = 1; }
+	           //Update the opponents turn
+	           /*
+	           updateItemSpec = new UpdateItemSpec()
+	                   	.withPrimaryKey("PlayerId", otherPlayer)
+	                   	.addAttributeUpdate(new AttributeUpdate("IsTurn").put(true));
+		       itemOutcome = playerInfo.updateItem(updateItemSpec);
+		       */
+	           playerInfo.IsTurn = true;
+	           
+		       String message = "Opponent moved";
+		       //Checks to see if there is a winner and sets the field in the database
+		       //if(checkBoard(-15)  || checkBoard(-16) || checkBoard(-17) || checkBoard(-1)){
+		       if(checkBoard()){
+		    	   displayMessage("You Won");		    	   
+	   	           message = "Opponent Won";
+	   	           /*
+	        	   updateItemSpec = new UpdateItemSpec()
+	                      	.withPrimaryKey("PlayerId", otherPlayer)
+	                      	.addAttributeUpdate(new AttributeUpdate("OpponentWon").put(true));
+	   	           itemOutcome = playerInfo.updateItem(updateItemSpec);
+	   	           */
+		       }
+		       playerInfo.message = message;
+		       File f = SerializeObject(playerInfo, "playerinfo.txt");
+	           putObjectInS3("playerinfo.mnetz", opponentID, f);
+		       /*
+		       updateItemSpec = new UpdateItemSpec()
+	                   	.withPrimaryKey("PlayerId", otherPlayer)
+	                   	.addAttributeUpdate(new AttributeUpdate("Message").put(message));
+		       itemOutcome = playerInfo.updateItem(updateItemSpec);
+		       */
+	       } 
+	       catch (Exception e) {
+	           System.err.println("Unable to read item: " + playerId + " in sendClickedSquare\n" + e.getMessage());
+	       }
+ 	  
+	       myTurn = false; // not my turn anymore
+	       checkExists("playerinfo.mnetz", myID, true);//Delete current player file if exists
           
        } // end if
     } // end method sendClickedSquare
@@ -774,9 +763,9 @@ public class TicTacToeS3 extends JFrame implements Runnable {
        	  	@Override public void windowOpened(WindowEvent e) {}	
        	    @Override public void windowClosing(WindowEvent e) {
        	    	try {
-       	    		PlayerInfo p1 = new PlayerInfo(1, false, false, "empty", false);
+       	    		//PlayerInfo p1 = new PlayerInfo(1, false, false, "empty", false);
        	    		//Probably serialize these PlayerInfos into file form then upload them to S3 bucket
-       	    		PlayerInfo p2 = new PlayerInfo(2, false, false, "empty", false);
+       	    		//PlayerInfo p2 = new PlayerInfo(2, false, false, "empty", false);
        	    		CleanUp();
        		    }
        	    	catch (Exception ex) {
@@ -819,7 +808,8 @@ public class TicTacToeS3 extends JFrame implements Runnable {
         //CleanUp(application);
     }
     private static void CleanUp() {
-    	appHandle.deleteObjectS3("playerinfo.mnetz", myID + "connected");		
+    	appHandle.deleteObjectS3("playerinfo.mnetz", myID + "connected");
+    	appHandle.checkExists("playerinfo.mnetz", myID, true);
 	}
 
 // control thread that allows continuous update of displayArea
@@ -836,7 +826,7 @@ public class TicTacToeS3 extends JFrame implements Runnable {
        //myTurn = ( myMark.equals( X_MARK ) ); // determine if client's turn
        while ( ! isGameOver() ) {
     		  System.out.print("");
-     	  while(!myTurn) {
+     	  while(!myTurn && checkExists("playerinfo.mnetz", myID, false)) {
      		  try {
      			  Thread.sleep(1000);
      			  checkForTurn();
