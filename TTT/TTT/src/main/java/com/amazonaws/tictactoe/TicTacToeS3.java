@@ -113,7 +113,7 @@ public class TicTacToeS3 extends JFrame implements Runnable {
 	public static TicTacToeS3 appHandle = null;
 	private String myBoard;
 
-   	public static AmazonS3 makeS3(){
+   	public static AmazonS3 makeS3() {
     	AWSCredentials credentials = null;
         try {
             credentials = new ProfileCredentialsProvider("default").getCredentials();
@@ -130,23 +130,18 @@ public class TicTacToeS3 extends JFrame implements Runnable {
     	return s3client;
     }
    	
-   	public TicTacToeS3( String host )
-   	{ 
+   	public TicTacToeS3( String host ) { 
    		displayArea = new JTextArea( 4, 30 ); // set up JTextArea
    		displayArea.setEditable( false );
    		add( new JScrollPane( displayArea ), BorderLayout.SOUTH );
-
    		boardPanel = new JPanel(); // set up panel for squares in board
    		boardPanel.setLayout( new GridLayout( bsize, bsize, 0, 0 ) ); //was 3
-
    		board = new Square[ bsize ][ bsize ]; // create board
 
    		// loop over the rows in the board
-   		for ( int row = 0; row < board.length; row++ ) 
-   		{
+   		for ( int row = 0; row < board.length; row++ ) {
    			// loop over the columns in the board
-   			for ( int column = 0; column < board[ row ].length; column++ ) 
-   			{
+   			for ( int column = 0; column < board[ row ].length; column++ ) {
    				// create square. initially the symbol on each square is a white space.
    				board[ row ][ column ] = new Square( " ", row * bsize + column );
    				boardPanel.add( board[ row ][ column ] ); // add square       
@@ -155,12 +150,10 @@ public class TicTacToeS3 extends JFrame implements Runnable {
 
    		idField = new JTextField(); // set up textfield
    		idField.setEditable( false );
-   		add( idField, BorderLayout.NORTH );
-   	   
+   		add( idField, BorderLayout.NORTH );   	   
    		panel2 = new JPanel(); // set up panel to contain boardPanel
    		panel2.add( boardPanel, BorderLayout.CENTER ); // add board panel
    		add( panel2, BorderLayout.CENTER ); // add container panel
-
    		setSize( 600, 600 ); // set size of window
    		setVisible( true ); // show window
 
@@ -169,21 +162,18 @@ public class TicTacToeS3 extends JFrame implements Runnable {
    	
 
    	// start the client thread
-   	public void startClient()
-   	{  
+   	public void startClient() {  
    		setPlayerInfo();
    		// create and start worker thread for this client
    		ExecutorService worker = Executors.newFixedThreadPool( 1 );
    		worker.execute( this ); // execute client
    	} // end method startClient
 
-   	public void setPlayerInfo(){
+   	public void setPlayerInfo() {
    		playerInfo = new PlayerInfo(1, false, false, "empty", false);
    		gameInfo = new Board();
 
  	    try {
- 	        //UpdateItemSpec updateItemSpec;
- 	        //UpdateItemOutcome itemOutcome;
  	        //Sets the player mark X for player 1  and O for player 2
  	        if(!checkExists("playerinfo.mnetz", "playeroneconnected", false)){
  	        	myMark =  X_MARK;
@@ -201,7 +191,7 @@ public class TicTacToeS3 extends JFrame implements Runnable {
  	        	displayMessage("Player X connected\n");
  	        	displayMessage("Waiting for other player to connect\n");
  	        }
- 	        else{
+ 	        else {
  	        	myMark = O_MARK;
  	        	//Updates the DB to say that is player is connected as player 2
  	        	playerInfo.PlayerId = 2;
@@ -209,16 +199,15 @@ public class TicTacToeS3 extends JFrame implements Runnable {
  	        	opponentID = player1key;
  	        	myBoard = player2key + "board";
  	        	File dummyConnected = new File("playertwoconnected.txt");
- 	        	//File savedResults = SerializeObject(playerInfo, "playerinfo.txt");
+ 	        	File savedResults = SerializeObject(playerInfo, "playerinfo.txt");
  	        	putObjectInS3("playerinfo.mnetz", "playertwoconnected", dummyConnected);
+ 	        	putObjectInS3("playerinfo.mnetz", opponentID, savedResults);
+ 	        	displayMessage("Player O connected\n");
  	        	myTurn = false;
  	        }
-
- 	       }catch (Exception e) {
- 	    	   System.err.println("Unable to read item: " + " in setPlayerInfo");
- 	           System.err.println(e.getMessage());
- 	       	}
-   	}
+ 	    }
+ 	   	catch (Exception e) { System.err.println("Unable to read item: in setPlayerInfo" + e.getMessage()); }
+   	}//end of setPlayerInfo
    	
    	public void putObjectInS3(String bucketName, String keyName, File uploadFile){
     	try{
@@ -233,9 +222,7 @@ public class TicTacToeS3 extends JFrame implements Runnable {
             System.out.println("Error Type:       " + ase.getErrorType());
             System.out.println("Request ID:       " + ase.getRequestId());
         }
-    	catch (AmazonClientException ace) {
-            System.out.println("Error Message: " + ace.getMessage());
-        }
+    	catch (AmazonClientException ace) { System.out.println("Error Message: " + ace.getMessage()); }
     }
    	
    	public void deleteObjectS3(String bucketName, String key){
@@ -544,15 +531,14 @@ public class TicTacToeS3 extends JFrame implements Runnable {
 	        }//end of elseif
 	   }
 	   catch (Exception e) {
-		   System.err.println("Unable to read item:" + playerId + " in checkForTurn");
-		   System.err.println(e.getMessage());
-		   displayMessage("your move");
+		   System.err.println("Unable to read item:" + playerId + " in checkForTurn\n" + e.getMessage());
+		   displayMessage("your move\n");
 	   }
 
     }
 
     private boolean isGameOver() {
- 	   return false;
+ 	   return checkExists("playerinfo.mnetz", "gameover", false);//Check if the gameover file exists
     }
     public boolean checkBoard(){
  		int row = 0;
@@ -718,7 +704,9 @@ public class TicTacToeS3 extends JFrame implements Runnable {
 		       //Checks to see if there is a winner and sets the field in the database
 		       //if(checkBoard(-15)  || checkBoard(-16) || checkBoard(-17) || checkBoard(-1)){
 		       if(checkBoard()){
-		    	   displayMessage("You Won");		    	   
+		    	   displayMessage("You Won");
+		    	   File dummyWinner = new File("gameover.txt");
+		    	   putObjectInS3("playerinfo.mnetz", "gameover", dummyWinner);
 	   	           message = "Opponent Won";
 	   	           /*
 	        	   updateItemSpec = new UpdateItemSpec()
@@ -804,12 +792,11 @@ public class TicTacToeS3 extends JFrame implements Runnable {
     	catch(Exception e){System.out.println(e.getMessage());}
     	System.out.println("Micah's Test End");        
         */
-        //The below method needs to be called at window close
-        //CleanUp(application);
     }
     private static void CleanUp() {
     	appHandle.deleteObjectS3("playerinfo.mnetz", myID + "connected");
     	appHandle.checkExists("playerinfo.mnetz", myID, true);
+    	appHandle.checkExists("playerinfo.mnetz", "gameover", true);
 	}
 
 // control thread that allows continuous update of displayArea
