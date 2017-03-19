@@ -1,6 +1,5 @@
 package com.amazonaws.tictactoe;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -11,9 +10,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-import java.util.UUID;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
@@ -34,6 +30,8 @@ import com.amazonaws.tictactoe.TicTacToeClient.Square;
 import com.amazonaws.*;
 import com.amazonaws.services.s3.model.DeleteObjectRequest;
 
+//import aws
+import com.amazonaws.client.builder.AwsClientBuilder;
 import java.util.Iterator;
 import java.util.List;
 
@@ -46,12 +44,9 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
-import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.net.InetAddress;
-import java.io.IOException;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -59,30 +54,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
-import com.amazonaws.auth.profile.ProfileCredentialsProvider;
-import com.amazonaws.AmazonClientException;
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.profile.ProfileCredentialsProvider;
-//import aws
-import com.amazonaws.client.builder.AwsClientBuilder;
-import com.amazonaws.regions.Region;
-import com.amazonaws.regions.Regions;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
-import com.amazonaws.services.dynamodbv2.document.AttributeUpdate;
-import com.amazonaws.services.dynamodbv2.document.DynamoDB;
-import com.amazonaws.services.dynamodbv2.document.Item;
-import com.amazonaws.services.dynamodbv2.document.Table;
-import com.amazonaws.services.dynamodbv2.document.UpdateItemOutcome;
-import com.amazonaws.services.dynamodbv2.document.spec.GetItemSpec;
-import com.amazonaws.services.dynamodbv2.document.spec.UpdateItemSpec;
-import com.amazonaws.services.dynamodbv2.model.TableDescription;
-import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
-import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import java.io.Serializable;
-import java.util.Formatter;
-import java.util.Scanner;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 
@@ -179,13 +151,13 @@ public class TicTacToeS3 extends JFrame implements Runnable {
  	        	myMark =  X_MARK;
  	        	//The the player is the first to connect then they get first turn
  	        	waitingForOpponent = true;
- 	        	myTurn = true;
  	        	//Updates the DB to say that is player is connected as player 1
  	        	playerInfo.PlayerId = 1;
  	        	myID = player1key;
  	        	opponentID = player2key;
  	        	myBoard = player1key + "board";
  	        	File dummyConnected = new File("playeroneconnected.txt");
+ 	        	dummyConnected.createNewFile();
  	        	//File savedResults = SerializeObject(playerInfo, "playerinfo.txt");
  	        	putObjectInS3("playerinfo.mnetz", "playeroneconnected", dummyConnected);
  	        	displayMessage("Player X connected\n");
@@ -199,7 +171,8 @@ public class TicTacToeS3 extends JFrame implements Runnable {
  	        	opponentID = player1key;
  	        	myBoard = player2key + "board";
  	        	File dummyConnected = new File("playertwoconnected.txt");
- 	        	File savedResults = SerializeObject(playerInfo, "playerinfo.txt");
+ 	        	dummyConnected.createNewFile();
+ 	        	File savedResults = SerializeObject(playerInfo, "playerone.txt");
  	        	putObjectInS3("playerinfo.mnetz", "playertwoconnected", dummyConnected);
  	        	putObjectInS3("playerinfo.mnetz", opponentID, savedResults);
  	        	displayMessage("Player O connected\n");
@@ -249,8 +222,8 @@ public class TicTacToeS3 extends JFrame implements Runnable {
                 String summaryKey = summary.getKey();
                 deleteObjectS3(bucketName, summaryKey);
             }   	        
-        	System.out.println("Deleting bucket " + bucketName + "\n");
-        	myS3.deleteBucket(bucketName);
+        	//System.out.println("Deleting bucket " + bucketName + "\n");
+        	//myS3.deleteBucket(bucketName);
    		} catch (AmazonServiceException ase) {
 	        System.out.println("Error Message:    " + ase.getMessage());
 	        System.out.println("HTTP Status Code: " + ase.getStatusCode());
@@ -438,7 +411,7 @@ public class TicTacToeS3 extends JFrame implements Runnable {
                 public void mouseReleased( MouseEvent e )
                 {
              	   if(getMark().equals(" ")){
-	             	   if(myTurn){
+	             	   if(/*myTurn*/checkExists("playerinfo.mnetz", myID, false)){
 	    	                  setCurrentSquare( Square.this ); // set current square
 	    	                  TicTacToeS3.this.setMark( currentSquare, myMark );
 	    	                  displayMessage("You clicked at location: " + getSquareLocation() + "\n");
@@ -488,51 +461,35 @@ public class TicTacToeS3 extends JFrame implements Runnable {
        } // end method paintComponent
     } // end inner-class Square
 
-    public void checkForTurn(){
-    	/*
-    	GetItemSpec spec = new GetItemSpec()
-        .withPrimaryKey("PlayerId", playerId); 
-		*/
+    public void checkForTurn() {    	
     	try {
-    		if(checkExists("playerinfo.mnetz", myID, false)){
-    			myTurn = true;
-    			//waitingForOpponent = false;
-    		}
-    		else{
-    			myTurn = false;
-    			//waitingForOpponent = true;
-    		}
-	        if(myTurn){
-	        	String message  = playerInfo.message;//outcome.getString("Message");
-	        	processMessage( message );
-	        }
-	        else if(waitingForOpponent){	        	
-	        	if(checkExists("playerinfo.mnetz", opponentID + "connected", false)){
+    		if(waitingForOpponent) {	        	
+	        	if(checkExists("playerinfo.mnetz", opponentID + "connected", false)) {
 	        		displayMessage("Player 2 has connected\nYour turn\n");
 	        		myTurn = true;
 	        		waitingForOpponent = false;
 	        	}
-	        	/*
-	        	GetItemSpec spec1 = new GetItemSpec()
-	                    .withPrimaryKey("PlayerId", 2); 
-	        	Item isConnected = playerInfo.getItem(spec1);
-	        	if(isConnected.getBOOL("IsConnected")){
-	        		UpdateItemSpec updateItemSpec = new UpdateItemSpec()
-		                   								.withPrimaryKey("PlayerId", playerId)
-		                   								.addAttributeUpdate(new AttributeUpdate("IsTurn").put(true));
-	 	            UpdateItemOutcome itemOutcome = playerInfo.updateItem(updateItemSpec);
-	 	            
-	 	            displayMessage("Player 2 has connected\n" +
-	 	            			   "Your turn\n");
-	 	            myTurn = true;
-	 	            waitingForOpponent = false;
-	        	}
-	        	*/
-	        }//end of elseif
+	        }
+    		if(checkExists("playerinfo.mnetz", myID, false)) {
+    			myTurn = true;
+    		}
+    		else{
+    			myTurn = false;
+    		}
+	        if(/*myTurn*/checkExists("playerinfo.mnetz", myID, false)){
+	        	String message = "";
+	        	ObjectListing object_listing = myS3.listObjects("message.mnetz");
+	        	List<S3ObjectSummary> summaries = object_listing.getObjectSummaries();
+	        	for (S3ObjectSummary summary : summaries) {
+	                message += summary.getKey();
+	            }	        	
+	        	deleteBucketS3("message.mnetz");
+	        	processMessage( message );	        	
+	        }	        
 	   }
 	   catch (Exception e) {
-		   System.err.println("Unable to read item:" + playerId + " in checkForTurn\n" + e.getMessage());
-		   displayMessage("your move\n");
+		   System.err.println("Unable to read item:" + myID + " in checkForTurn\n" + e.getMessage());
+		   displayMessage("*your move*\n");
 	   }
 
     }
@@ -593,20 +550,13 @@ public class TicTacToeS3 extends JFrame implements Runnable {
  	}
   	//get move location from opponent
     private int getOpponentMove() {
-    	/*
-	   	GetItemSpec spec = new GetItemSpec()
-        	.withPrimaryKey("Row", "0"); 
-	   	Item outcome = gameInfo.getItem(spec);
-	   	*/
-    	int position = -1;
-    	
-    	if(checkExists("board.mnetz", myBoard, false)) {    	
-	    	S3Object obj = downloadObj("board.mnetz", myBoard);
-			Board b = ReadSerializedBoard(obj.getKey().toString());
-			System.out.println("Board retrieved: \n" + b.toString());		
-			//int position = gameInfo.LastMove;//outcome.getInt("LastMove");
-			position = b.LastMove;
-    	}
+    	int position = 0;    	
+    	ObjectListing object_listing = myS3.listObjects("board.mnetz");
+    	List<S3ObjectSummary> summaries = object_listing.getObjectSummaries();
+    	for (S3ObjectSummary summary : summaries) {
+            position += Integer.parseInt(summary.getKey());
+        }
+    	deleteBucketS3("board.mnetz");
     	return position;
     }    
     private void processMessage( String message )
@@ -666,71 +616,39 @@ public class TicTacToeS3 extends JFrame implements Runnable {
     {
        // if it is my turn
     	//Might only need one or the other (or &&) as both may confuse things
-       if ( myTurn || checkExists("playerinfo.mnetz", myID, false) )
+       if ( /*myTurn || */checkExists("playerinfo.mnetz", myID, false) )
        { 	  	
 	       try {
-	           //System.out.println("Attempting to read the item...");
-	           //UpdateItemSpec updateItemSpec;
-	           //UpdateItemOutcome itemOutcome;
-	           
-	           //Update the last move in the table
-	    	   gameInfo.LastMove = location;
-	           /*
-	           updateItemSpec = new UpdateItemSpec()
-	                   	.withPrimaryKey("Row", "0")
-	                   	.addAttributeUpdate(new AttributeUpdate("LastMove").put(location));
-		       itemOutcome = gameInfo.updateItem(updateItemSpec);
-		       */    
-		       //Update the current player turns
-		       /*
-		       updateItemSpec = new UpdateItemSpec()
-                	.withPrimaryKey("PlayerId", playerId)
-                	.addAttributeUpdate(new AttributeUpdate("IsTurn").put(false));
-	           itemOutcome = playerInfo.updateItem(updateItemSpec);
-	           */	    	   
+	    	   File dummyMove = new File("move.txt");
+	    	   dummyMove.createNewFile();
+	    	   putObjectInS3("board.mnetz", Integer.toString(location), dummyMove);
 	           int otherPlayer;
 	           if(playerId == 1){ otherPlayer = 2; }
 	           else { otherPlayer = 1; }
-	           //Update the opponents turn
-	           /*
-	           updateItemSpec = new UpdateItemSpec()
-	                   	.withPrimaryKey("PlayerId", otherPlayer)
-	                   	.addAttributeUpdate(new AttributeUpdate("IsTurn").put(true));
-		       itemOutcome = playerInfo.updateItem(updateItemSpec);
-		       */
-	           playerInfo.IsTurn = true;
-	           
+	           //Update the opponents turn           
 		       String message = "Opponent moved";
+		       
 		       //Checks to see if there is a winner and sets the field in the database
 		       //if(checkBoard(-15)  || checkBoard(-16) || checkBoard(-17) || checkBoard(-1)){
 		       if(checkBoard()){
 		    	   displayMessage("You Won");
 		    	   File dummyWinner = new File("gameover.txt");
+		    	   dummyWinner.createNewFile();
 		    	   putObjectInS3("playerinfo.mnetz", "gameover", dummyWinner);
 	   	           message = "Opponent Won";
-	   	           /*
-	        	   updateItemSpec = new UpdateItemSpec()
-	                      	.withPrimaryKey("PlayerId", otherPlayer)
-	                      	.addAttributeUpdate(new AttributeUpdate("OpponentWon").put(true));
-	   	           itemOutcome = playerInfo.updateItem(updateItemSpec);
-	   	           */
 		       }
-		       playerInfo.message = message;
-		       File f = SerializeObject(playerInfo, "playerinfo.txt");
-	           putObjectInS3("playerinfo.mnetz", opponentID, f);
-		       /*
-		       updateItemSpec = new UpdateItemSpec()
-	                   	.withPrimaryKey("PlayerId", otherPlayer)
-	                   	.addAttributeUpdate(new AttributeUpdate("Message").put(message));
-		       itemOutcome = playerInfo.updateItem(updateItemSpec);
-		       */
+		       File dummyMessage = new File("message.txt");
+		       dummyMessage.createNewFile();
+		       putObjectInS3("message.mnetz", message, dummyMessage);
 	       } 
 	       catch (Exception e) {
-	           System.err.println("Unable to read item: " + playerId + " in sendClickedSquare\n" + e.getMessage());
+	           System.err.println("Unable to read item: " + myID + " in sendClickedSquare\n" + e.getMessage());
 	       }
  	  
-	       myTurn = false; // not my turn anymore
+	       //myTurn = false; // not my turn anymore
 	       checkExists("playerinfo.mnetz", myID, true);//Delete current player file if exists
+	       File f = SerializeObject(playerInfo, opponentID + ".txt");
+	       putObjectInS3("playerinfo.mnetz", opponentID, f);
           
        } // end if
     } // end method sendClickedSquare
@@ -750,53 +668,22 @@ public class TicTacToeS3 extends JFrame implements Runnable {
         application.addWindowListener(new WindowListener() {            
        	  	@Override public void windowOpened(WindowEvent e) {}	
        	    @Override public void windowClosing(WindowEvent e) {
-       	    	try {
-       	    		//PlayerInfo p1 = new PlayerInfo(1, false, false, "empty", false);
-       	    		//Probably serialize these PlayerInfos into file form then upload them to S3 bucket
-       	    		//PlayerInfo p2 = new PlayerInfo(2, false, false, "empty", false);
-       	    		CleanUp();
-       		    }
-       	    	catch (Exception ex) {
-   		           System.err.println("Unable to read item: window Listener\n" + ex.getMessage());
-       	    	}
+       	    	try { CleanUp(); }
+       	    	catch (Exception ex) { System.err.println("Unable to read item: window Listener\n" + ex.getMessage()); }
        	    }
        	    @Override public void windowIconified(WindowEvent e) {}            
        	    @Override public void windowDeiconified(WindowEvent e) {}            
        	    @Override public void windowDeactivated(WindowEvent e) {}            
        	    @Override public void windowActivated(WindowEvent e) {}
-       	    @Override public void windowClosed(WindowEvent e) {}
-       	});
-        /* Below is some basic functionality testing
-    	TicTacToeS3 tic = new TicTacToeS3("");
-    	System.out.println("Micah's Test Start");
-    	PlayerInfo pi = new PlayerInfo(1, false, false, "Test", false);
-    	File savedResults = SerializeObject(pi, "playerinfo.txt");
-    	tic.putObjectInS3("playerinfo.mnetz", "playerone", savedResults);
-    	try {
-    		S3Object pt = tic.downloadObj("playerinfo.mnetz", "playerone");
-    		pi = ReadSerializedPlayerInfo(pt.getKey().toString());
-    		System.out.println("PlayerInfo retrieved: \n" + pi.toString());
-    		if(!pi.IsConnected){
-    			System.out.println("Not yet connected.");
-    			pi.IsConnected = true;
-    			savedResults = SerializeObject(pi, "playerinfo.txt");
-    			tic.putObjectInS3("playerinfo.mnetz", "playerone", savedResults);    			
-    		}
-    		pt = tic.downloadObj("playerinfo.mnetz", "playerone");
-    		pi = ReadSerializedPlayerInfo(pt.getKey().toString());
-    		System.out.println("PlayerInfo retrieved: \n" + pi.toString());
-    		if(pi.IsConnected){
-    			System.out.println("Connected!");    			
-    		}
-    	}
-    	catch(Exception e){System.out.println(e.getMessage());}
-    	System.out.println("Micah's Test End");        
-        */
+       	    @Override public void windowClosed(WindowEvent e) { }
+       	});        
     }
     private static void CleanUp() {
     	appHandle.deleteObjectS3("playerinfo.mnetz", myID + "connected");
     	appHandle.checkExists("playerinfo.mnetz", myID, true);
     	appHandle.checkExists("playerinfo.mnetz", "gameover", true);
+    	appHandle.deleteBucketS3("board.mnetz");
+    	appHandle.deleteBucketS3("message.mnetz");
 	}
 
 // control thread that allows continuous update of displayArea
@@ -813,9 +700,9 @@ public class TicTacToeS3 extends JFrame implements Runnable {
        //myTurn = ( myMark.equals( X_MARK ) ); // determine if client's turn
        while ( ! isGameOver() ) {
     		  System.out.print("");
-     	  while(!myTurn && checkExists("playerinfo.mnetz", myID, false)) {
+     	  while(/*!myTurn*/!checkExists("playerinfo.mnetz", myID, false)) {
      		  try {
-     			  Thread.sleep(1000);
+     			  Thread.sleep(500);
      			  checkForTurn();
      		  } 
      		  catch (InterruptedException e) { e.printStackTrace(); }
