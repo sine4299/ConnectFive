@@ -412,6 +412,7 @@ public class TicTacToeS3 extends JFrame implements Runnable {
                 {
              	   if(getMark().equals(" ")){
 	             	   if(/*myTurn*/checkExists("playerinfo.mnetz", myID, false)){
+	             		   	  Square.this.setMark(myMark);
 	    	                  setCurrentSquare( Square.this ); // set current square
 	    	                  TicTacToeS3.this.setMark( currentSquare, myMark );
 	    	                  displayMessage("You clicked at location: " + getSquareLocation() + "\n");
